@@ -235,8 +235,10 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
     def _set_status(self,valve,value = False):
         if value == True:
             led = GREEN_LED
+            self.status[valve]=value
         else:
             led = RED_LED
+            self.status[valve]=value
             
         if(valve == 0):
             self.status1.setPixmap(QtGui.QPixmap(led))
@@ -265,11 +267,13 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
             self._set_progress()
             if(self.override == False):
                 if(self.timeRemaining[self._valveIndex] <= self.exhaustCloseTime):
-                    syscontrol.CloseValve(8)   
-                    self._set_status(8,False)
+                    if(self.status[8]==True):
+                        syscontrol.CloseValve(8)   
+                        self._set_status(8,False)
             if(self.timeRemaining[self._valveIndex] <= self.dwellTime.total_seconds()):
-                syscontrol.CloseValve(self._valveIndex)   
-                self._set_status(self._valveIndex,False)
+                if(self.status[self._valveIndex]==True):
+                    syscontrol.CloseValve(self._valveIndex)   
+                    self._set_status(self._valveIndex,False)
                 
             if(self.timeRemaining[self._valveIndex]==0):
                 self.valveCompleteFlag = True
