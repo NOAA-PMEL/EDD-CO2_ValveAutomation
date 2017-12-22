@@ -126,7 +126,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         offsetSeconds = dt.timedelta()
         for i in range(len(self.timeRemaining)):
             offsetSeconds += dt.timedelta(seconds =self.timeRemaining[i])
-        self.endTime = (self.startTime + offsetSeconds) 
+        self.endTime = (self.startTime + (self.numCycles*offsetSeconds))
         
         ## Get Close Time (VALVE 9)
         self.closeTime = dt.timedelta(hours = self.closeTimeBox.time().hour(),
