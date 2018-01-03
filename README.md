@@ -1,6 +1,15 @@
 # EDD-CO2_ValveAutomation
 Valve block automation for calibrating CO2 using multiple calibration gases
 
+This program requires the following:
+
+| Software Package | Version |
+|------------------|---------|
+| Python           | 3.6     |
+| PyQt5            | 5.6.2   |
+| PySerial         | 3.3     |
+| Pandas           | 0.20.3  |
+
 #### Legal Disclaimer
 
 *This repository is a software product and is not official communication 
