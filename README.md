@@ -9,6 +9,11 @@ This program requires the following:
 | PyQt5            | 5.6.2   |
 | PySerial         | 3.3     |
 | Pandas           | 0.20.3  |
+| LabJackPython    | 5-26-2015 |
+
+
+LabJack Python can be found here:
+https://github.com/labjack/LabJackPython 
 
 #### Legal Disclaimer
 
