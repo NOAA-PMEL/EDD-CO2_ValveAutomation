@@ -10,7 +10,7 @@ import datetime as dt
 import time
 import csv
 import pandas as pd
-
+import os
 GREEN_LED = 'if_Green Ball_38793.png'
 RED_LED = 'if_Red Ball_38831.png'
 
@@ -38,6 +38,10 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.closeTime = dt.timedelta()
         self.override = False
         self.valveRunTime = 0
+        self.fileopen = False
+        
+        self.valvestate = [False]*8  ## False = Close, True = Open
+        self.flowIdx = False
         
         
         ## Setup the User Interface
@@ -145,6 +149,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.endTimeBox.setText(str(self.endTime))
         print("Estimated completion time: " + str(self.endTime))
         
+        ## Create a file with output
 
         ## Lock the fields
         
@@ -156,6 +161,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         
         ## Finish run
         self.endTimeBox.setText("COMPLETE")
+        self._close_file()
         print("Complete Run")
         
     def _set_start_condition(self):
@@ -204,6 +210,9 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
                     syscontrol.OpenValve(8)
                     self._set_status(8,True)
                     syscontrol.OpenValve(i)
+                    print(i)
+                    self.valvestate[i] = True
+                    self.flowIdx = i
                     self.timer.start(1000)
                     self._set_status(i,True)
                     while(self.valveCompleteFlag == False):
@@ -273,11 +282,97 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
             if(self.timeRemaining[self._valveIndex] <= self.dwellTime.total_seconds()):
                 if(self.status[self._valveIndex]==True):
                     syscontrol.CloseValve(self._valveIndex)   
+                    self.valvestate[self._valveIndex] = True
                     self._set_status(self._valveIndex,False)
+                else:
+                    self.valvestate[self._valveIndex] = False
                 
             if(self.timeRemaining[self._valveIndex]==0):
                 self.valveCompleteFlag = True
-#                if(self.)
+            
+            # Write the text to file
+            text = self._create_file_text()
+            self._write_to_file(text)
+            return
+        
+    def _create_file_text(self):
+        timestamp = time.strftime('%Y/%m/%d %H:%M:%S')
+        
+        ## Add User Input Serial Number 
+        sernum = self.serNumText.toPlainText()
+       
+        gas = 'Gas#' + str(self.flowIdx+1)
+        if self.flowIdx == 0:
+            ppm = self.ref1.toPlainText()
+        elif self.flowIdx == 1:
+            ppm = self.ref2.toPlainText()
+        elif self.flowIdx == 2:
+            ppm = self.ref3.toPlainText()
+        elif self.flowIdx == 3:
+            ppm = self.ref4.toPlainText()
+        elif self.flowIdx == 4:
+            ppm = self.ref5.toPlainText()
+        elif self.flowIdx == 5:
+            ppm = self.ref6.toPlainText()
+        elif self.flowIdx == 6:
+            ppm = self.ref7.toPlainText()
+        elif self.flowIdx == 7:
+            ppm = self.ref8.toPlainText()
+        
+        ppm = gas + '/' + ppm + 'ppm'
+                
+                
+    
+        if(self.valvestate[self.flowIdx] == True):
+            state = 'F'
+        else:
+            state = 'D'
+            
+    
+            
+        sendline = timestamp + ',' + sernum + ',' + ppm + ',' + state + '\n'
+#        sendline = timestamp + ',' + serialnum + ',' + ppm + ',' + state
+        
+        
+        return sendline
+        
+                
+    def _create_file(self):
+        
+        filename = 'logfile_' + time.strftime('%Y%m%d_%H%M%S',time.localtime())+'.txt'
+        
+#        self.serNumText.setText(filename)
+        self.filenameLabel.setText(filename)
+        try:
+            os.mkdir('Logs')
+            
+        except:
+            print('Path exists')
+            
+        try:
+            path = os.path.join(os.getcwd(),'Logs')
+            filename = os.path.join(path,filename)
+            self.file = open(filename,"w+")
+            self.fileopen = True
+            
+            self.file.write('Timestamp, Serial Number, Gas3/ppm, State\n')
+        except:
+            print("Failed to create/open log file")
+            self.fileopen = False
+            
+            
+    def _write_to_file(self,line):
+        if(self.fileopen == False):
+            self._create_file()
+        
+        print(line)
+        self.file.write(line)
+        
+        
+    def _close_file(self):
+        self.file.close()
+        self.fileopen = False
+
     def _open_vent(self):
         syscontrol.OpenValve(8)   
         self._set_status(8,True)
