@@ -10,7 +10,7 @@ import datetime as dt
 import time
 import csv
 import pandas as pd
-
+import os
 GREEN_LED = 'if_Green Ball_38793.png'
 RED_LED = 'if_Red Ball_38831.png'
 
@@ -38,6 +38,10 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.closeTime = dt.timedelta()
         self.override = False
         self.valveRunTime = 0
+        self.fileopen = False
+        
+        self.valvestate = [False]*8  ## False = Close, True = Open
+        self.flowIdx = False
         
         
         ## Setup the User Interface
@@ -83,8 +87,9 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         except:
             print("No saved file")
         
+        
+        
     def _start(self):
-    
         print("Start")
         
         ## Determine if we are skipping any valves
@@ -144,11 +149,9 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.endTimeBox.setText(str(self.endTime))
         print("Estimated completion time: " + str(self.endTime))
         
+        ## Create a file with output
 
         ## Lock the fields
-        for i in range(len(self.status)):
-            syscontrol.CloseValve(i)
-            self._set_status(i, False)
         
         ## Enter the run phase
         self._run()
@@ -158,14 +161,38 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         
         ## Finish run
         self.endTimeBox.setText("COMPLETE")
+        self._close_file()
         print("Complete Run")
         
     def _set_start_condition(self):
-    
         pass
         
+#    def run(self):
+#        print("run")
+#        if(self.override == True):
+#            syscontrol.OpenValve(8)
+#            self._set_status(8,True)
+#            QtCore.QCoreApplication.processEvents()
+#        for t in range(self.numCycles):
+#            for i in range(8):
+#                self._valveIndex = i
+#                
+#                if(self.skipGas[i] == False):
+#                    syscontrol.OpenValve(i)
+#                    self._set_status(i,True)
+#                    if(self.override == False):
+#                        syscontrol.OpenValve(8)
+#                        self._set_status(8,True)
+#                    while(self.timeRemaining[i] > self.dwellTime.total_seconds()):
+#                        QtCore.QCoreApplication.processEvents()
+#                        time.sleep(1)
+#                    syscontrol.CloseValve(i)   
+#                    self._set_status(i,False)
+#                    while(self.timeRemaining[i] > 0):
+#                        QtCore.QCoreApplication.processEvents()
+#                        time.sleep(1)
+            
     def _run(self):
-    
         print("run")
         for t in range(self.numCycles):
             for i in range(8):
@@ -180,22 +207,20 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
                 self._valveIndex = i
                 self.valveCompleteFlag = False
                 if(self.skipGas[i]==False):
-                    if(self.status[8]==False):
-                        if(self.closeTime.total_seconds()>0):
-                            syscontrol.OpenValve(8)
-                            self._set_status(8,True)
+                    syscontrol.OpenValve(8)
+                    self._set_status(8,True)
                     syscontrol.OpenValve(i)
+                    print(i)
+                    self.valvestate[i] = True
+                    self.flowIdx = i
                     self.timer.start(1000)
                     self._set_status(i,True)
-                   
                     while(self.valveCompleteFlag == False):
                         QtCore.QCoreApplication.processEvents()
                         time.sleep(0.25)
                     self.timer.stop()
         self._valveIndex = -1
-        
     def _set_progress(self):
-    
         self.progress1.setValue(self.progress[0])
         self.progress2.setValue(self.progress[1])
         self.progress3.setValue(self.progress[2])
@@ -205,9 +230,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.progress7.setValue(self.progress[6])
         self.progress8.setValue(self.progress[7])
         QtCore.QCoreApplication.processEvents()
-        
     def _set_timeremaining(self):
-    
         self.lcd1.display(self.timeRemaining[0])
         self.lcd2.display(self.timeRemaining[1])
         self.lcd3.display(self.timeRemaining[2])
@@ -218,9 +241,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.lcd8.display(self.timeRemaining[7])
         self.show()
         QtCore.QCoreApplication.processEvents()
-        
     def _set_status(self,valve,value = False):
-    
         if value == True:
             led = GREEN_LED
             self.status[valve]=value
@@ -247,9 +268,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         elif(valve == 8):
             self.status9.setPixmap(QtGui.QPixmap(led))
         QtCore.QCoreApplication.processEvents()
-        
     def _timerEvent(self):
-    
         if(self._valveIndex >= 0):
             self.timeRemaining[self._valveIndex] -= 1
             self._set_timeremaining()
@@ -260,43 +279,126 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
                     if(self.status[8]==True):
                         syscontrol.CloseValve(8)   
                         self._set_status(8,False)
-                        
             if(self.timeRemaining[self._valveIndex] <= self.dwellTime.total_seconds()):
                 if(self.status[self._valveIndex]==True):
-                    syscontrol.CloseValve(self._valveIndex) 
+                    syscontrol.CloseValve(self._valveIndex)   
+                    self.valvestate[self._valveIndex] = True
                     self._set_status(self._valveIndex,False)
-                #else:
-                    #self.valvestate[self._valveIndex] = True
+                else:
+                    self.valvestate[self._valveIndex] = False
                 
             if(self.timeRemaining[self._valveIndex]==0):
                 self.valveCompleteFlag = True
+            
+            # Write the text to file
+            text = self._create_file_text()
+            self._write_to_file(text)
+            return
+        
+    def _create_file_text(self):
+        timestamp = time.strftime('%Y/%m/%d %H:%M:%S')
+        
+        ## Add User Input Serial Number 
+        sernum = self.serNumText.toPlainText()
+       
+        gas = 'Gas#' + str(self.flowIdx+1)
+        if self.flowIdx == 0:
+            ppm = self.ref1.toPlainText()
+        elif self.flowIdx == 1:
+            ppm = self.ref2.toPlainText()
+        elif self.flowIdx == 2:
+            ppm = self.ref3.toPlainText()
+        elif self.flowIdx == 3:
+            ppm = self.ref4.toPlainText()
+        elif self.flowIdx == 4:
+            ppm = self.ref5.toPlainText()
+        elif self.flowIdx == 5:
+            ppm = self.ref6.toPlainText()
+        elif self.flowIdx == 6:
+            ppm = self.ref7.toPlainText()
+        elif self.flowIdx == 7:
+            ppm = self.ref8.toPlainText()
+        
+        ppm = gas + '/' + ppm + 'ppm'
+                
+                
+    
+        if(self.valvestate[self.flowIdx] == True):
+            state = 'F'
+        else:
+            state = 'D'
+            
+    
+            
+        sendline = timestamp + ',' + sernum + ',' + ppm + ',' + state + '\n'
+#        sendline = timestamp + ',' + serialnum + ',' + ppm + ',' + state
+        
+        
+        return sendline
+        
+                
+    def _create_file(self):
+        
+        filename = 'logfile_' + time.strftime('%Y%m%d_%H%M%S',time.localtime())+'.txt'
+        
+#        self.serNumText.setText(filename)
+        self.filenameLabel.setText(filename)
+        try:
+            os.mkdir('Logs')
+            
+        except:
+            print('Path exists')
+            
+        try:
+            path = os.path.join(os.getcwd(),'Logs')
+            filename = os.path.join(path,filename)
+            self.file = open(filename,"w+")
+            self.fileopen = True
+            
+            self.file.write('Timestamp, Serial Number, Gas3/ppm, State\n')
+        except:
+            print("Failed to create/open log file")
+            self.fileopen = False
+            
+            
+    def _write_to_file(self,line):
+        if(self.fileopen == False):
+            self._create_file()
+        
+        print(line)
+        self.file.write(line)
+        
+        
+    def _close_file(self):
+        self.file.close()
+        self.fileopen = False
 
     def _open_vent(self):
-    
         syscontrol.OpenValve(8)   
         self._set_status(8,True)
         QtCore.QCoreApplication.processEvents()
-        
     def _close_vent(self):
-    
         syscontrol.CloseValve(8)   
         self._set_status(8,False)
         QtCore.QCoreApplication.processEvents()
     
     def _save_refs(self):
-    
         print("Save Refs")
+#        values = {'Ref1':self.ref1.toPlainText(),'Ref2':self.ref2.toPlainText(),
+#                  'Ref3':self.ref3.toPlainText(),'Ref4':self.ref4.toPlainText(),
+#                  'Ref5':self.ref5.toPlainText(),'Ref6':self.ref6.toPlainText(),
+#                  'Ref7':self.ref7.toPlainText(),'Ref8':self.ref8.toPlainText()}
         values = [self.ref1.toPlainText(),self.ref2.toPlainText(),
                   self.ref3.toPlainText(),self.ref4.toPlainText(),
                   self.ref5.toPlainText(),self.ref6.toPlainText(),
                   self.ref7.toPlainText(),self.ref8.toPlainText()]
 
         df = pd.DataFrame(columns=('Ref1','Ref2','Ref3','Ref4','Ref5','Ref6','Ref7','Ref8'))
+#        df2 = pd.DataFrame(values)
         df.loc[1] = values
         df.to_csv(SAVEFILE)
         
 def main():
-
     app = QtWidgets.QApplication(sys.argv)  # A new instance of QApplication
     form = ValveApp()                 # We set the form to be our ExampleApp (design)
     form.show()                         # Show the form
@@ -304,7 +406,6 @@ def main():
 
 
 if __name__ == '__main__':              # if we're running file directly and not importing it
-
     main()                              # run the main function
     
     print("Done")
