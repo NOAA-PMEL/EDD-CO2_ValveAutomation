@@ -39,6 +39,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.override = False
         self.valveRunTime = 0
         self.fileopen = False
+        self._end_program=False
         
         self.valvestate = [False]*8  ## False = Close, True = Open
         self.flowIdx = False
@@ -49,7 +50,7 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         
         ## Connect the start button
         self.startButton.clicked.connect(self._start)
-        
+        self.stopButton.clicked.connect(self._stop)
         ## Connect the vent button
         self.ventButton.pressed.connect(self._open_vent)
         self.ventButton.released.connect(self._close_vent)
@@ -153,9 +154,16 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
 
         ## Lock the fields
         
+        for i in range(len(self.status)):
+            syscontrol.CloseValve(i)
+            self._set_status(i, False)
+        
+        
+        
+       
         ## Enter the run phase
         self._run()
-#        self.show()
+
         
         ## Unlock the fields
         
@@ -164,36 +172,17 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self._close_file()
         print("Complete Run")
         
+    def _stop(self):
+        
+        self._end_program=True
+        
+        
     def _set_start_condition(self):
         pass
         
-#    def run(self):
-#        print("run")
-#        if(self.override == True):
-#            syscontrol.OpenValve(8)
-#            self._set_status(8,True)
-#            QtCore.QCoreApplication.processEvents()
-#        for t in range(self.numCycles):
-#            for i in range(8):
-#                self._valveIndex = i
-#                
-#                if(self.skipGas[i] == False):
-#                    syscontrol.OpenValve(i)
-#                    self._set_status(i,True)
-#                    if(self.override == False):
-#                        syscontrol.OpenValve(8)
-#                        self._set_status(8,True)
-#                    while(self.timeRemaining[i] > self.dwellTime.total_seconds()):
-#                        QtCore.QCoreApplication.processEvents()
-#                        time.sleep(1)
-#                    syscontrol.CloseValve(i)   
-#                    self._set_status(i,False)
-#                    while(self.timeRemaining[i] > 0):
-#                        QtCore.QCoreApplication.processEvents()
-#                        time.sleep(1)
-            
     def _run(self):
         print("run")
+        self._end_program=False
         for t in range(self.numCycles):
             for i in range(8):
                 self.progress[i] = 0
@@ -203,23 +192,30 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
                     self.timeRemaining[i] = self.valveRunTime.total_seconds()
                 
             for i in range(8):
-
+              
                 self._valveIndex = i
                 self.valveCompleteFlag = False
                 if(self.skipGas[i]==False):
-                    syscontrol.OpenValve(8)
-                    self._set_status(8,True)
+                    if(self.status[8]==False):
+                        if(self.closeTime.total_seconds()>0):
+                            syscontrol.OpenValve(8)
+                            self._set_status(8,True)
                     syscontrol.OpenValve(i)
-                    print(i)
-                    self.valvestate[i] = True
                     self.flowIdx = i
+                    text = self._create_file_text()
+                    self._write_to_file(text)
                     self.timer.start(1000)
                     self._set_status(i,True)
+                    
                     while(self.valveCompleteFlag == False):
                         QtCore.QCoreApplication.processEvents()
+                        if(self._end_program==True):
+                            self.timer.stop()
+                            return
                         time.sleep(0.25)
                     self.timer.stop()
         self._valveIndex = -1
+        
     def _set_progress(self):
         self.progress1.setValue(self.progress[0])
         self.progress2.setValue(self.progress[1])
@@ -279,21 +275,24 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
                     if(self.status[8]==True):
                         syscontrol.CloseValve(8)   
                         self._set_status(8,False)
+                        
             if(self.timeRemaining[self._valveIndex] <= self.dwellTime.total_seconds()):
                 if(self.status[self._valveIndex]==True):
-                    syscontrol.CloseValve(self._valveIndex)   
+                    syscontrol.CloseValve(self._valveIndex) 
                     self.valvestate[self._valveIndex] = True
                     self._set_status(self._valveIndex,False)
                 else:
-                    self.valvestate[self._valveIndex] = False
+                    self.valvestate[self._valveIndex] = True
                 
             if(self.timeRemaining[self._valveIndex]==0):
                 self.valveCompleteFlag = True
             
-            # Write the text to file
-            text = self._create_file_text()
-            self._write_to_file(text)
-            return
+            
+            
+            ## Connect the start button
+            self.startButton.clicked.connect(self._stop)
+            
+            return 
         
     def _create_file_text(self):
         timestamp = time.strftime('%Y/%m/%d %H:%M:%S')
@@ -347,7 +346,8 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
             os.mkdir('Logs')
             
         except:
-            print('Path exists')
+            #print('Path exists')
+            pass
             
         try:
             path = os.path.join(os.getcwd(),'Logs')
