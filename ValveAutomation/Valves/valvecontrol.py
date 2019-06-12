@@ -6,6 +6,7 @@ import syscontrol
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
+from ui_serial import *
 import datetime as dt
 import time
 import csv
@@ -44,9 +45,16 @@ class ValveApp(QtWidgets.QMainWindow, valve.Ui_MainWindow):
         self.flowIdx = False
         
         
+        
+        
         ## Setup the User Interface
         self.setupUi(self)  
         
+        
+        self.ser = SerialPort()
+#        self.SerialWidget.a
+        self.retranslateUi(self)
+        self.SerialWidget.show()
         ## Connect the start button
         self.startButton.clicked.connect(self._start)
         
