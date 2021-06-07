@@ -1,0 +1,18 @@
+Device Type,             Num Used,  Value,  Package,  References
+
+CD74HC4514,             2,        ,SO24,U13 U14
+43045-0202,             25,       ,43045-0202,J1 J2 J3 J4 J5 J6 J7 J8 J9 J10 J11 J12 J13 J14 J15 J16 J17 J18 J19 J20 J21 J22 J23 J24 Jrelay_power
+43045-1002,             1,        ,43045-1002,J0
+B120DICT,               24,       ,SMA,D1 D3 D4 D6 D7 D8 D9 D10 D11 D12 D13 D14 D15 D16 D17 D18 D19 D20 D21 D22 D23 D24 D25 D26
+DFLS240-7,              1,        ,POWERDI123,D2
+L6205D,                 12,       ,SO20,U1 U2 U3 U4 U5 U6 U7 U8 U9 U10 U11 U12
+NC7SZ14,                1,        NC7SZ14,SOT23-5,U15
+C0805F103M5RACAUTO,                       12,       0.01UF,0805,C4 C8 C11 C15 C19 C23 C27 C31 C35 C39 C43 C47
+C0805T104K1RAL7800,                       14,       0.1UF,0805,C2 C7 C9 C14 C18 C22 C26 C30 C34 C38 C42 C46 C49 C50
+C0805C224J1RACTU,                       12,       0.22UF,0805,C3 C10 C12 C16 C20 C24 C28 C32 C36 C40 C44 C48
+CRG0805F100R,                       12,       100R,1206/0805,R1 R2 R3 R4 R5 R6 R7 R8 R9 R10 R11 R12
+TCKOJ107BT,                       12,       100uF,EIA-CE,C1 C5 C6 C13 C17 C21 C25 C29 C33 C37 C41 C45
+TCMIC106BT,                       1,        10uF,EIA-CE,C51
+CR1206-FX-1001ELF,                       1,        1K,1206/0805,R95
+EEU-FP1E681B,                       1,        680uF,C12.5MMD5MMP,C100
+APHCM2012QBC/D-F01,                       1,        ,0805,D5

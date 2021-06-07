@@ -1,0 +1,14 @@
+Assembly Variant Service has detected improper attribute values
+
+Sun Jun 06 18:40:08 2021
+
+Current Job : final DIC board rev 0.1_blz.pcb
+
+
+Format:
+OBJ_NAME
+OLD_VALUE{EMPTY;TOO_LONG}
+NEW_VALUE{DELETED;TOO_LONG}
+RESUME
+
+
