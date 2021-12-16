@@ -1,5 +1,5 @@
 # EDD-CO2_ValveAutomation
-Valve block automation for calibrating CO2 using multiple calibration gases
+Valve block automation for calibrating CO2 using multiple calibration gases, this is an OLD repo and has been superceded by the EDD-OvenTest and EDD-ASVCO2_Automation repos.
 
 This program requires the following:
 
